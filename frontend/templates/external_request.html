@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+
+{% block head %}
+
+{% endblock %}
+
+{% block section_title %}External requests{% endblock %}
+
+{% block content %}
+    <table id="d-table" class="table table-striped" style="width:100%">
+        <thead>
+        <tr>
+            <th>Identity</th>
+            <th>Description</th>
+            <th>Requester</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for d in data %}
+            <tr>
+                <td>{{ d.related_data.identifier }}</td>
+                <td>{{ d.related_data.description }}</td>
+                <td>{{ d.decoded | linebreaksbr }}</td>
+                <td>{{ d.get_status_display }}</td>
+                <td>
+                    <form action="{% url 'frontend:requesters_data' %}" method="post">
+                        {% csrf_token %}
+                        <input name="e_pk" type="number" value="{{ d.pk }}" hidden="">
+                        <input name="status" type="number" value="2" hidden="">
+                        <button type="submit" class="btn btn-success" style="color: white; font-weight: 600; width: 65px; margin-bottom: 10px;">Allow</button>
+                    </form>
+                    <form action="" method="post">
+                        {% csrf_token %}
+                        <input name="e_pk" type="number" value="{{ d.pk }}" hidden="">
+                        <input name="status" type="number" value="3" hidden="">
+                        <button type="submit" class="btn btn-danger" style="color: white; font-weight: 600;width: 65px;">Deny</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+
+    </table>
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        new DataTable('#d-table');
+    </script>
+{% endblock %}

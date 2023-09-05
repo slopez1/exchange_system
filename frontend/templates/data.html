@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+
+{% block head %}
+
+{% endblock %}
+
+{% block section_title %}Global data{% endblock %}
+
+{% block content %}
+    <table id="d-table" class="table table-striped" style="width:100%">
+        <thead>
+        <tr>
+            <th>Identity</th>
+            <th>Description</th>
+            <th>Access Status</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for d in data %}
+            <tr>
+                <td><a href="{% url 'frontend:global_data_detail' d.pk %}">{{ d.identifier }}</a></td>
+                <td>{{ d.description }}</td>
+                <td>{{ d.get_sync_status_display }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+
+    </table>
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        new DataTable('#d-table');
+    </script>
+{% endblock %}

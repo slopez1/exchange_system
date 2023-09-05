@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+
+{% block head %}
+
+{% endblock %}
+
+{% block section_title %}Data: {{ data.identifier }}{% endblock %}
+
+{% block content %}
+    {% if correct == 1 %}
+        <div class="alert alert-success mb-3">
+            <h5>Shared!</h5>
+        </div>
+    {% endif %}
+    {% if correct == 2 %}
+        <div class="alert alert-danger mb-3">
+            <h5>Error!</h5>
+            <p>{{ form.errors }}</p>
+        </div>
+    {% endif %}
+
+    <form action="{% url 'frontend:own_data_detail' data.pk %}" method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                {% endif %}
+                {% for error in field.errors %}
+                    <div class="invalid-feedback">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Save</button>
+    </form>
+{% endblock %}
+
+
+{% block scripts %}
+    <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
+
+
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+
+{% block head %}
+
+{% endblock %}
+
+{% block section_title %}Data: {{ gb.identifier }}{% endblock %}
+
+{% block content %}
+
+    <div class="row">
+        <div class="col-1"><b>Identifier:</b></div>
+        <div class="col-11">{{ gb.identifier }}</div>
+    </div>
+    <br>
+    <div class="row">
+        <div class="col-12"><b>Description:</b></div>
+        <div class="col-12">{{ gb.description }}</div>
+    </div>
+    <br>
+    <div class="row">
+        {% if gb.sync_status == 1 or gb.sync_status == 2 %}
+            <div class="col-2"><b>Access Status:</b></div>
+            <div class="col-10">{{ gb.get_sync_status_display }}</div>
+        {% else %}
+            <div class="col-2"><b>Access Status:</b></div>
+            <div class="col-2">{{ gb.get_sync_status_display }}</div>
+            <div class="col-8">
+                <form action="{% url 'frontend:global_data_detail' gb.pk %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-info" style="color: white; font-weight: 600;">Ask access</button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+    <br>
+    <hr>
+    {% if data %}
+    <div class="row">
+        <div class="col-12"><b>Data:</b></div>
+        <div class="col-12" style="min-height: 400px; background: aliceblue; border: 1px solid;">
+            <pre  class="prettyprint"><code class="language-java" id="beautified"></code></pre>
+        </div>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
+    {{ data|json_script:'json_data' }}
+    <script>
+
+        document.getElementById("beautified").innerHTML = JSON.stringify(JSON.parse(document.getElementById('json_data').textContent), null, 4);
+    </script>
+
+{% endblock %}
