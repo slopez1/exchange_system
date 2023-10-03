@@ -5,7 +5,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from core.models import ABSSharedData
+from core.models import ABSSharedData, Expedient
 from core.security.validators import validate_access
 
 
@@ -15,13 +15,20 @@ class GenericSerializer(serializers.ModelSerializer):
         exclude = ['id', 'synchronized', 'created']
 
 
+class ExpedientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expedient
+        exclude = ['id', 'synchronized', 'created']
+        depth = 2
+
 class GetDataView(APIView):
 
     serializers_by_class = {
-        # Add your custom serializers for your data custom data
+        # Add your custom serializers for your  custom data
         # Key: SubClass of ABSSharedData
         # Value: Your Serializer
         ABSSharedData: GenericSerializer,
+        Expedient: ExpedientSerializer
     }
 
     def get_serializer(self, model):

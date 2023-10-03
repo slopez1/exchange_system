@@ -71,11 +71,11 @@ class CreateData(View):
             for k in CUSTOM_FORMS:
                 forms.append([k.friendly_name, k()])
         if prev_forms:
-            print(prev_forms.errors)
             for t in forms:
                 if t[0] == prev_forms.friendly_name:
                     t[1] = prev_forms
                     break
+
         return render(request, self.template_name, context={'forms': forms, 'correct': correct})
 
     def get(self, request):
@@ -83,14 +83,11 @@ class CreateData(View):
 
     def post(self, request):
         model_type = request.POST['model_type']
-        print(model_type)
         form = ABSSharedDataForm
         for k in CUSTOM_FORMS:
             if k.friendly_name == model_type:
                 form = k
                 break
-        print(form)
-        print(request.POST)
         form = form(request.POST)
         if form.is_valid():
             form.save()
@@ -140,7 +137,7 @@ class OwnDataDetail(View):
         correct = 2
 
         if form.is_valid():
-            data = form.save(commit=False)
+            data = form.save()
             data.synchronized = False
             data.save()
             correct = 1

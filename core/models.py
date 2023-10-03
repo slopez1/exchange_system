@@ -79,6 +79,30 @@ class Timers(models.Model):
         return "{}: {}".format(self.timer_type, self.seconds)
 
 
+class Medication(models.Model):
+    name = models.CharField(max_length=50, blank=True, null=True)
+    dosage = models.CharField(max_length=50, blank=True, null=True)
+    frequency = models.CharField(max_length=50, blank=True, null=True)
+
+
+class MedicalHistory(models.Model):
+    last_visit = models.DateField(blank=True, null=True)
+    diagnosis = models.CharField(max_length=300, blank=True, null=True)
+    allergies = models.CharField(max_length=200, blank=True, null=True)
+    medication = models.OneToOneField(Medication, null=True, blank=True,
+                                      on_delete=models.CASCADE)
+
+
+class Expedient(ABSSharedData):
+    name = models.CharField(max_length=30, blank=True, null=True)
+    date_of_birth = models.DateField(blank=True, null=True)
+    gender = models.CharField(max_length=50, blank=True, null=True)
+    social_security_number = models.CharField(max_length=9, blank=True, null=True)
+    address = models.CharField(max_length=100, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    medical_history = models.OneToOneField(MedicalHistory, null=True,
+                                           blank=True, on_delete=models.CASCADE)
+
 ###########################
 # EXAMPLE EXTEND ABS DATA #
 ###########################
