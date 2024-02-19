@@ -76,20 +76,11 @@ class FabricSmartContractInterface(SmartContractInterface):
         response_string = unclean_response.replace('\\"', '"')
         if len(response_string) < 5:
             return ''
-        # print(unclean_response)
-        # start_index = response_string.index('stdout:') + len('stdout:')
-        # end_index = response_string.index(']', start_index) + 1
-        # json_string = response_string[start_index:end_index]
-
-        # json_string = json_string[1:]
-
-        # json_data = json.loads(json_string)
         json_data = json.loads(response_string)
         return json_data
 
     def _run_and_process_command(self, command):
         result = subprocess.run(command, shell=True, capture_output=True, text=True, env=self.env)
-        #print(str(result))
         if result.stderr:
             print("Command: " + str(command))
             print("Error: " + str(result.stderr))

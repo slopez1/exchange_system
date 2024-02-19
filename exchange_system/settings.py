@@ -17,7 +17,6 @@ import OpenSSL.crypto
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -26,32 +25,34 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 #          IMPORTANT        #
 #############################
 BLOCKCHAIN_LAYER_OPTIONS = ['Fabric', 'Ethereum']
-BLOCKCHAIN_LAYER = os.getenv("EXCHANGE_SYSTEM_BLOCKCHAIN_LAYER", 'Fabric') # Select blockchain layer Fabric/Ethereum (Ethereum WIP)
+BLOCKCHAIN_LAYER = os.getenv("EXCHANGE_SYSTEM_BLOCKCHAIN_LAYER",
+                             'Fabric')  # Select blockchain layer Fabric/Ethereum (Ethereum WIP)
 
 if BLOCKCHAIN_LAYER not in BLOCKCHAIN_LAYER_OPTIONS:
     raise EnvironmentError("{} its invalid option please set EXCHANGE_SYSTEM_BLOCKCHAIN_LAYER"
-                           " variable with crrect option, options: {}".format(BLOCKCHAIN_LAYER, str(BLOCKCHAIN_LAYER_OPTIONS)))
+                           " variable with crrect option, options: {}".format(BLOCKCHAIN_LAYER,
+                                                                              str(BLOCKCHAIN_LAYER_OPTIONS)))
 
-
-ENDPOINT = os.getenv("EXCHANGE_SYSTEM_ENDPOINT", 'http://localhost:8000') # The endpoint where this node will publish the data.
+ENDPOINT = os.getenv("EXCHANGE_SYSTEM_ENDPOINT",
+                     'http://localhost:8000')  # The endpoint where this node will publish the data.
 ############################
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('EXCHANGE_SYSTEM_SECRET_KEY', 'django-insecure-w2mz3yen)*0sbjb^#tc#9c)j7%39310=_4(w%3phr1m$ms0stb')
-
+SECRET_KEY = os.getenv('EXCHANGE_SYSTEM_SECRET_KEY',
+                       'django-insecure-w2mz3yen)*0sbjb^#tc#9c)j7%39310=_4(w%3phr1m$ms0stb')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if os.getenv('EXCHANGE_SYSTEM_DEBUG', 'True') == 'True' else False
 
-
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
 INSTALLED_APPS = [
     "frontend.apps.FrontendConfig",
     "endpoint.apps.EndpointConfig",
+    "ethereum.apps.EthereumConfig",
     "fabric.apps.FabricConfig",
     'rest_framework',
     "core.apps.CoreConfig",
@@ -95,17 +96,32 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "exchange_system.wsgi.application"
 
-
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
+POSTGRES_NAME = os.getenv("POSTGRES_NAME", '')
+POSTGRES_USER = os.getenv("POSTGRES_USER", '')
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", '')
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", 'db')
 
+if POSTGRES_USER:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('POSTGRES_NAME'),
+            'USER': os.environ.get('POSTGRES_USER'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
+            'HOST': POSTGRES_HOST,
+            'PORT': 5432,
+        }
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -125,7 +141,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
@@ -137,7 +152,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
@@ -147,7 +161,6 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
 
 OWNER_IDENTITY = os.getenv('EXCHANGE_SYSTEM_OWNER_IDENTITY', None)
 
@@ -196,6 +209,9 @@ def extract_certificate_identity(cert_file: str) -> str:
     return get_identity(cert_data)
 
 
+BC_GRACE_TIME = os.getenv('EXCHANGE_SYSTEM_BC_GRACE_TIME',
+                          15)  # Time that the system tolerates, if it does not detect changes in the blockchain before sending another request
+
 if BLOCKCHAIN_LAYER == 'Fabric':
     MANDATORY_ENV_VARS = ["EXCHANGE_SYSTEM_BINARY_PATH",
                           "EXCHANGE_SYSTEM_CONFIG_PATH",
@@ -216,41 +232,14 @@ if BLOCKCHAIN_LAYER == 'Fabric':
 
     BINARY_PATH = os.getenv('EXCHANGE_SYSTEM_BINARY_PATH')  # Path to fabric binaries
     CONFIG_PATH = os.getenv('EXCHANGE_SYSTEM_CONFIG_PATH')  # Path to fabric config folder
-    MSP_ID = os.getenv('EXCHANGE_SYSTEM_MSP_ID') # ID of local msp
-    MSP_CONFIG_PATH = os.getenv('EXCHANGE_SYSTEM_MSP_CONFIG_PATH') # Path to user msp
-    TLS_ROOT_CERT = os.getenv('EXCHANGE_SYSTEM_TLS_ROOT_CERT') # Path to the public key of TLS-CA
-    PEER_ADDRESS = os.getenv('EXCHANGE_SYSTEM_PEER_ADDRESS') # Hostname and port of the current peer witch locate this code.
-    CHANNEL = os.getenv('EXCHANGE_SYSTEM_CHANNEL') # Channel where smart contract was locate
-    CHAINCODE = os.getenv('EXCHANGE_SYSTEM_CHAINCODE') # Channel where smart contract was locate
-    OWNER_CERT = os.getenv('EXCHANGE_SYSTEM_OWNER_CERT') # Path to owner public cert
-    OWNER_PRIVATE_CERT = os.getenv('EXCHANGE_SYSTEM_OWNER_PRIVATE_CERT') # Path to owner public cert
+    MSP_ID = os.getenv('EXCHANGE_SYSTEM_MSP_ID')  # ID of local msp
+    MSP_CONFIG_PATH = os.getenv('EXCHANGE_SYSTEM_MSP_CONFIG_PATH')  # Path to user msp
+    TLS_ROOT_CERT = os.getenv('EXCHANGE_SYSTEM_TLS_ROOT_CERT')  # Path to the public key of TLS-CA
+    PEER_ADDRESS = os.getenv(
+        'EXCHANGE_SYSTEM_PEER_ADDRESS')  # Hostname and port of the current peer witch locate this code.
+    CHANNEL = os.getenv('EXCHANGE_SYSTEM_CHANNEL')  # Channel where smart contract was locate
+    CHAINCODE = os.getenv('EXCHANGE_SYSTEM_CHAINCODE')  # Channel where smart contract was locate
+    OWNER_CERT = os.getenv('EXCHANGE_SYSTEM_OWNER_CERT')  # Path to owner public cert
+    OWNER_PRIVATE_CERT = os.getenv('EXCHANGE_SYSTEM_OWNER_PRIVATE_CERT')  # Path to owner public cert
     OWNER_IDENTITY = extract_certificate_identity(OWNER_CERT)
     CA_ROOT_CERT = os.getenv('EXCHANGE_SYSTEM_CA_ROOT_CERT')  # Path to the public key of CA
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

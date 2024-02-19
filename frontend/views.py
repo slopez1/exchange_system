@@ -1,5 +1,5 @@
 import base64
-
+from django.conf import settings
 from django.shortcuts import render, get_object_or_404
 from django.views import View
 
@@ -41,12 +41,18 @@ class DataDetail(View):
 class Requesters(View):
     template_name = 'external_request.html'
 
-    def _render(self, request):
-        data = ExternalRequests.objects.all()
-        for d in data:
+    def _get_decoded(self, d):
+        if settings.BLOCKCHAIN_LAYER == 'Fabric':
             d.decoded = d.decode_requester().replace('x509::', '')
             d.decoded = d.decoded[0:d.decoded.find("::CN", 1)]
             d.decoded = d.decoded.replace(',', '\n')
+        else:
+            d.decoded = d.requester
+
+    def _render(self, request):
+        data = ExternalRequests.objects.all()
+        for d in data:
+            self._get_decoded(d)
         return render(request, self.template_name, context={'data': data})
 
     def get(self, request):

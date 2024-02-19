@@ -1,0 +1,135 @@
+version: '3'
+services:
+  bootstrap:
+    build: geth-client
+    restart: on-failure
+    container_name: bootstrap
+    hostname: bootstrap
+    entrypoint: /root/start.sh
+    command: '--datadir=~/.ethereum/devchain --nodekeyhex=091bd6067cb4612df85d9c1ff85cc47f259ced4d4cd99816b14f35650f59c322 --http.api "db,personal,eth,net,web3" --networkid=456719 --http --http.corsdomain=* --http.vhosts=* --http.addr=0.0.0.0 --http.rpcprefix="/"  --miner.etherbase 0x99429f64cf4d5837620dcc293c1a537d58729b68 --miner.gasprice "0" --miner.threads 1 --mine'
+    volumes:
+      - ./files/password:/root/files/password:ro
+      - ./files/genesis.json:/root/files/genesis.json:ro
+      - ./files/keystore:/root/.ethereum/devchain/keystore:rw
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "30303:30303"
+      - "30303:30303/udp"
+      - "8545:8545"
+      - "8553:8553"
+  eth:
+    build: geth-client
+    restart: on-failure
+    links:
+      - bootstrap
+    entrypoint: /root/start.sh
+    volumes:
+      - ./files/password:/root/files/password:ro
+      - ./files/genesis.json:/root/files/genesis.json:ro
+      - ./files/keystore:/root/.ethereum/devchain/keystore:rw
+      - /etc/localtime:/etc/localtime:ro
+    command: '--datadir=~/.ethereum/devchain --http.corsdomain="*" --networkid=456719 --http --bootnodes="enode://288b97262895b1c7ec61cf314c2e2004407d0a5dc77566877aad1f2a36659c8b698f4b56fd06c4a0c0bf007b4cfb3e7122d907da3b005fa90e724441902eb19e@XXX:30303" --http.rpcprefix="/"  --miner.etherbase 0x99429f64cf4d5837620dcc293c1a537d58729b68 --miner.gasprice "0" --miner.threads 1 --mine'
+  web:
+    build:
+      dockerfile: ExampleDockers/Ethereum/exchange_system/Dockerfile
+      context: ../../
+    restart: on-failure
+    command: >
+      sh -c "./ExampleDockers/Ethereum/exchange_system/delete_previous_address.sh &&
+             python manage.py migrate &&
+             python manage.py raise_ethereum_config_default &&
+             python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST=db
+      - EXCHANGE_SYSTEM_ENDPOINT=http://web:8000
+      - ACCOUNT_PATH=ExampleDockers/Ethereum/files/keystore/UTC--2016-02-29T14-52-41.334222730Z--007ccffb7916f37f7aeef05e8096ecfbe55afc2f
+    depends_on:
+      - db
+      - bootstrap
+      - eth
+    volumes:
+      -  ./exchange_system/healthcheck:/code/ExampleDockers/Ethereum/exchange_system/healthcheck
+  crono:
+    build:
+      dockerfile: ExampleDockers/Ethereum/exchange_system/Dockerfile
+      context: ../../
+    restart: on-failure
+    command: >
+      sh -c "./ExampleDockers/Ethereum/exchange_system/wait_until_address.sh &&
+             python manage.py crono "
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST=db
+      - EXCHANGE_SYSTEM_ENDPOINT=http://web:8000
+      - ACCOUNT_PATH=ExampleDockers/Ethereum/files/keystore/UTC--2016-02-29T14-52-41.334222730Z--007ccffb7916f37f7aeef05e8096ecfbe55afc2f
+    depends_on:
+      - web
+      - db
+    volumes:
+      -  ./exchange_system/healthcheck:/code/ExampleDockers/Ethereum/exchange_system/healthcheck
+  web2:
+    build:
+      dockerfile: ExampleDockers/Ethereum/exchange_system/Dockerfile
+      context: ../../
+    restart: on-failure
+    command: >
+      sh -c "./ExampleDockers/Ethereum/exchange_system/wait_until_address.sh &&
+             python manage.py migrate &&
+             python manage.py raise_ethereum_config_default &&
+             python manage.py runserver 0.0.0.0:8001"
+    ports:
+      - "8001:8001"
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST=db2
+      - EXCHANGE_SYSTEM_ENDPOINT=http://web2:8001
+      - ACCOUNT_PATH=ExampleDockers/Ethereum/files/keystore/UTC--2016-02-29T14-52-44.914646739Z--99429f64cf4d5837620dcc293c1a537d58729b68
+    depends_on:
+      - web
+      - db2
+    volumes:
+      -  ./exchange_system/healthcheck:/code/ExampleDockers/Ethereum/exchange_system/healthcheck
+  crono2:
+    build:
+      dockerfile: ExampleDockers/Ethereum/exchange_system/Dockerfile
+      context: ../../
+    restart: on-failure
+    command: >
+      sh -c "./ExampleDockers/Ethereum/exchange_system/wait_until_address.sh &&
+             sleep 3 &&
+             python manage.py crono "
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST=db2
+      - EXCHANGE_SYSTEM_ENDPOINT=http://web2:8001
+      - ACCOUNT_PATH=ExampleDockers/Ethereum/files/keystore/UTC--2016-02-29T14-52-44.914646739Z--99429f64cf4d5837620dcc293c1a537d58729b68
+    depends_on:
+      - web2
+      - db2
+    volumes:
+      - ./exchange_system/healthcheck:/code/ExampleDockers/Ethereum/exchange_system/healthcheck
+  db:
+    image: postgres
+    container_name: db
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  db2:
+    image: postgres
+    container_name: db2
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres

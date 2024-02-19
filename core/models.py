@@ -1,7 +1,7 @@
 import base64
 
 from django.db import models
-
+from django.utils import timezone
 
 # Create your models here.
 
@@ -22,9 +22,29 @@ class GlobalData(models.Model):
     description = models.CharField(max_length=1000)
     endpoint = models.CharField(max_length=1000)
     sync_status = models.IntegerField(choices=SYNC_STATUS_CHOICES, default=KNOWN)
+    last_sync_status = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return "{}: {}".format(self.identifier, self.description)
+
+    def mark_a_last_sync_status(self): # Update current last_syn_status to now (but not saved by default)
+        self.last_sync_status = timezone.now()
+
+    def seconds_since_last_sync(self):
+        if self.last_sync_status:
+            now = timezone.now()
+            time_diff = now - self.last_sync_status
+            return time_diff.total_seconds()
+        return 0
+
+
+    def save(self, *args, **kwargs):
+        # Update last_sync_status only if sync_status has changed
+        if self.pk is not None:
+            original = GlobalData.objects.get(pk=self.pk)
+            if original.sync_status != self.sync_status:
+                self.last_sync_status = timezone.now()
+        super().save(*args, **kwargs)
 
 
 class ABSSharedData(models.Model):
