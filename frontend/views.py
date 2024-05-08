@@ -11,7 +11,7 @@ from frontend.forms import *
 # Create your views here.
 
 
-class Main(View):
+class Man(View):
     template_name = 'data.html'
 
     def get(self, request):

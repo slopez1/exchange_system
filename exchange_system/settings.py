@@ -9,9 +9,12 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+import asyncio
 import base64
 import os
 from pathlib import Path
+from time import sleep
+
 import OpenSSL.crypto
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -46,6 +49,77 @@ SECRET_KEY = os.getenv('EXCHANGE_SYSTEM_SECRET_KEY',
 DEBUG = True if os.getenv('EXCHANGE_SYSTEM_DEBUG', 'True') == 'True' else False
 
 ALLOWED_HOSTS = ['*']
+
+def get_identity(cert_data: str) -> str:
+    certificate = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert_data)
+    # Get cert subject
+    subject = certificate.get_subject()
+
+    # Extract the subjects components
+    common_name = subject.CN
+    organizational_unit = subject.OU
+    locality = subject.L
+    state = subject.ST
+    country = subject.C
+
+    # Build cert identity
+    identity = f"x509::CN={common_name},OU={organizational_unit},L={locality},ST={state},C={country}::"
+
+    # Get cert issuer
+    issuer = certificate.get_issuer()
+
+    # Extract cert issuer
+    issuer_common_name = issuer.CN
+    issuer_organization = issuer.O
+    issuer_locality = issuer.L
+    issuer_state = issuer.ST
+    issuer_country = issuer.C
+
+    # Add emiter id to the cet id
+    identity += f"CN={issuer_common_name},O={issuer_organization},L={issuer_locality},ST={issuer_state},C={issuer_country}"
+    return base64.b64encode(identity.encode('utf-8')).decode('utf-8')
+
+def extract_certificate_identity(cert_file: str) -> str:
+    # Load certificate
+    with open(cert_file, 'r') as file:
+        cert_data = file.read()
+    return get_identity(cert_data)
+
+
+if BLOCKCHAIN_LAYER == 'Fabric':
+    MANDATORY_ENV_VARS = ["EXCHANGE_SYSTEM_BINARY_PATH",
+                          "EXCHANGE_SYSTEM_CONFIG_PATH",
+                          "EXCHANGE_SYSTEM_MSP_ID",
+                          "EXCHANGE_SYSTEM_MSP_CONFIG_PATH",
+                          "EXCHANGE_SYSTEM_TLS_ROOT_CERT",
+                          "EXCHANGE_SYSTEM_PEER_ADDRESS",
+                          "EXCHANGE_SYSTEM_CHANNEL",
+                          "EXCHANGE_SYSTEM_CHAINCODE",
+                          "EXCHANGE_SYSTEM_OWNER_CERT",
+                          "EXCHANGE_SYSTEM_OWNER_PRIVATE_CERT",
+                          "EXCHANGE_SYSTEM_CA_ROOT_CERT",
+                          ]
+
+    for var in MANDATORY_ENV_VARS:
+        if var not in os.environ:
+            raise EnvironmentError("Failed because {} is not set.".format(var))
+
+    BINARY_PATH = os.getenv('EXCHANGE_SYSTEM_BINARY_PATH')  # Path to fabric binaries
+    CONFIG_PATH = os.getenv('EXCHANGE_SYSTEM_CONFIG_PATH')  # Path to fabric config folder
+    MSP_ID = os.getenv('EXCHANGE_SYSTEM_MSP_ID')  # ID of local msp
+    MSP_CONFIG_PATH = os.getenv('EXCHANGE_SYSTEM_MSP_CONFIG_PATH')  # Path to user msp
+    TLS_ROOT_CERT = os.getenv('EXCHANGE_SYSTEM_TLS_ROOT_CERT')  # Path to the public key of TLS-CA
+    PEER_ADDRESS = os.getenv(
+        'EXCHANGE_SYSTEM_PEER_ADDRESS')  # Hostname and port of the current peer witch locate this code.
+    CHANNEL = os.getenv('EXCHANGE_SYSTEM_CHANNEL')  # Channel where smart contract was locate
+    CHAINCODE = os.getenv('EXCHANGE_SYSTEM_CHAINCODE')  # Channel where smart contract was locate
+    OWNER_CERT = os.getenv('EXCHANGE_SYSTEM_OWNER_CERT')  # Path to owner public cert
+    OWNER_PRIVATE_CERT = os.getenv('EXCHANGE_SYSTEM_OWNER_PRIVATE_CERT')  # Path to owner public cert
+    OWNER_IDENTITY = extract_certificate_identity(OWNER_CERT)
+    CA_ROOT_CERT = os.getenv('EXCHANGE_SYSTEM_CA_ROOT_CERT')  # Path to the public key of CA
+
+
+
 
 # Application definition
 
@@ -170,76 +244,9 @@ OWNER_IDENTITY = os.getenv('EXCHANGE_SYSTEM_OWNER_IDENTITY', None)
 #########################################
 
 
-def get_identity(cert_data: str) -> str:
-    certificate = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert_data)
-
-    # Get cert subject
-    subject = certificate.get_subject()
-
-    # Extract the subjects components
-    common_name = subject.CN
-    organizational_unit = subject.OU
-    locality = subject.L
-    state = subject.ST
-    country = subject.C
-
-    # Build cert identity
-    identity = f"x509::CN={common_name},OU={organizational_unit},L={locality},ST={state},C={country}::"
-
-    # Get cert issuer
-    issuer = certificate.get_issuer()
-
-    # Extract cert issuer
-    issuer_common_name = issuer.CN
-    issuer_organization = issuer.O
-    issuer_locality = issuer.L
-    issuer_state = issuer.ST
-    issuer_country = issuer.C
-
-    # Add emiter id to the cet id
-    identity += f"CN={issuer_common_name},O={issuer_organization},L={issuer_locality},ST={issuer_state},C={issuer_country}"
-
-    return base64.b64encode(identity.encode('utf-8')).decode('utf-8')
-
-
-def extract_certificate_identity(cert_file: str) -> str:
-    # Load certificate
-    with open(cert_file, 'r') as file:
-        cert_data = file.read()
-    return get_identity(cert_data)
 
 
 BC_GRACE_TIME = os.getenv('EXCHANGE_SYSTEM_BC_GRACE_TIME',
                           15)  # Time that the system tolerates, if it does not detect changes in the blockchain before sending another request
 
-if BLOCKCHAIN_LAYER == 'Fabric':
-    MANDATORY_ENV_VARS = ["EXCHANGE_SYSTEM_BINARY_PATH",
-                          "EXCHANGE_SYSTEM_CONFIG_PATH",
-                          "EXCHANGE_SYSTEM_MSP_ID",
-                          "EXCHANGE_SYSTEM_MSP_CONFIG_PATH",
-                          "EXCHANGE_SYSTEM_TLS_ROOT_CERT",
-                          "EXCHANGE_SYSTEM_PEER_ADDRESS",
-                          "EXCHANGE_SYSTEM_CHANNEL",
-                          "EXCHANGE_SYSTEM_CHAINCODE",
-                          "EXCHANGE_SYSTEM_OWNER_CERT",
-                          "EXCHANGE_SYSTEM_OWNER_PRIVATE_CERT",
-                          "EXCHANGE_SYSTEM_CA_ROOT_CERT",
-                          ]
 
-    for var in MANDATORY_ENV_VARS:
-        if var not in os.environ:
-            raise EnvironmentError("Failed because {} is not set.".format(var))
-
-    BINARY_PATH = os.getenv('EXCHANGE_SYSTEM_BINARY_PATH')  # Path to fabric binaries
-    CONFIG_PATH = os.getenv('EXCHANGE_SYSTEM_CONFIG_PATH')  # Path to fabric config folder
-    MSP_ID = os.getenv('EXCHANGE_SYSTEM_MSP_ID')  # ID of local msp
-    MSP_CONFIG_PATH = os.getenv('EXCHANGE_SYSTEM_MSP_CONFIG_PATH')  # Path to user msp
-    TLS_ROOT_CERT = os.getenv('EXCHANGE_SYSTEM_TLS_ROOT_CERT')  # Path to the public key of TLS-CA
-    PEER_ADDRESS = os.getenv(
-        'EXCHANGE_SYSTEM_PEER_ADDRESS')  # Hostname and port of the current peer witch locate this code.
-    CHANNEL = os.getenv('EXCHANGE_SYSTEM_CHANNEL')  # Channel where smart contract was locate
-    CHAINCODE = os.getenv('EXCHANGE_SYSTEM_CHAINCODE')  # Channel where smart contract was locate
-    OWNER_CERT = os.getenv('EXCHANGE_SYSTEM_OWNER_CERT')  # Path to owner public cert
-    OWNER_PRIVATE_CERT = os.getenv('EXCHANGE_SYSTEM_OWNER_PRIVATE_CERT')  # Path to owner public cert
-    OWNER_IDENTITY = extract_certificate_identity(OWNER_CERT)
-    CA_ROOT_CERT = os.getenv('EXCHANGE_SYSTEM_CA_ROOT_CERT')  # Path to the public key of CA
